@@ -532,11 +532,10 @@ class QrToTxtWindow(QMainWindow):
 		if getattr(self, "_tray", None) and self._settings.minimize_to_tray:
 			event.ignore()
 			self.hide()
-			self._tray.showMessage(
-				"QR to TXT", "Running in the background.", 2000
-			)
+			self._tray.showMessage("QR to TXT", "Running in the background.", 2000)
 		else:
 			event.accept()
+			QApplication.quit()
 
 
 def _sync_latest() -> str | None:

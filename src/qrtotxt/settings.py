@@ -38,7 +38,7 @@ class AppSettings:
 
 	@property
 	def minimize_to_tray(self):
-		return self._s.value("minimize_to_tray", True, type=bool)
+		return self._s.value("minimize_to_tray", False, type=bool)
 
 	@minimize_to_tray.setter
 	def minimize_to_tray(self, v):
