@@ -48,6 +48,7 @@ pip install -r requirements.txt
 
 APP_DIR="$TARGET_DIR"
 APP_PY="$APP_DIR/.venv/bin/python"
+APP_ICON="$APP_DIR/icon/qrtotxt.png"
 DESKTOP_FILE="$HOME/.local/share/applications/qr-to-txt.desktop"
 
 info "Creating desktop shortcut"
@@ -57,7 +58,7 @@ Type=Application
 Name=QR to TXT
 Comment=Decode QR codes to text
 Exec=$APP_PY $APP_DIR/QRtoTXT.py
-Icon=python3
+Icon=$APP_ICON
 Terminal=false
 Categories=Utility;Graphics;
 EOF

@@ -56,6 +56,34 @@ curl -fsSL https://raw.githubusercontent.com/NmnRn/QR-to-TXT/main/download.sh | 
 
 This script clones the repo, creates a virtual environment, and adds a desktop shortcut.
 
+## Upgrade (Linux)
+
+```bash
+bash upgrade.sh
+```
+
+Upgrade with one command:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/NmnRn/QR-to-TXT/main/upgrade.sh | bash
+```
+
+## Uninstall (Linux)
+
+```bash
+bash uninstall.sh
+```
+
+Uninstall with one command:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/NmnRn/QR-to-TXT/main/uninstall.sh | bash
+```
+
+## Architecture
+
+See [architecture/project.md](architecture/project.md).
+
 ## Notes
 
 - On Windows, `pyzbar` usually works with prebuilt wheels.
