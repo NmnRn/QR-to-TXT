@@ -21,9 +21,8 @@ warn() {
 REPO_URL="https://github.com/NmnRn/QR-to-TXT.git"
 TARGET_DIR="/home/$USER/QR-to-TXT"
 
-info "System update and dependencies"
+info "Installing dependencies"
 sudo apt update -qq
-sudo apt upgrade -y -qq
 sudo apt install -y -qq git python3 python3-venv python3-pip libzbar0
 
 info "Python version"
