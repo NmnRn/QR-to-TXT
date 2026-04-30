@@ -2,7 +2,7 @@ import json
 import threading
 import urllib.request
 
-CURRENT_VERSION = "1.2.1"
+CURRENT_VERSION = "1.3.0"
 _REPO = "NmnRn/QR-to-TXT"
 
 
