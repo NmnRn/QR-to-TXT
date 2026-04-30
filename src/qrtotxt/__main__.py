@@ -1,256 +1,49 @@
 import os
-from io import BytesIO
+import sys
 
-from PySide6.QtWidgets import (
-	QApplication,
-	QFileDialog,
-	QLabel,
-	QMainWindow,
-	QMessageBox,
-	QPushButton,
-	QTextEdit,
-	QWidget,
-	QHBoxLayout,
-	QVBoxLayout,
-)
-from PySide6.QtCore import Qt, QBuffer, QIODevice
-from PySide6.QtGui import QKeySequence, QShortcut
+from PySide6.QtCore import QObject, Signal
+from PySide6.QtGui import QIcon
+from PySide6.QtWidgets import QApplication
 
-from PIL import Image
-
-try:
-	from pyzbar.pyzbar import decode as _pyzbar_decode
-
-	def _decode_pil_image(image):
-		return [item.data.decode("utf-8", errors="replace") for item in _pyzbar_decode(image)]
-
-except ImportError:
-	import zxingcpp
-
-	def _decode_pil_image(image):
-		return [r.text for r in zxingcpp.read_barcodes(image)]
+from .settings import AppSettings
+from .tray import AppTray
+from .updater import check_for_update
+from .window import QrToTxtWindow
 
 
-def decode_qr_from_file(file_path):
-	return _decode_pil_image(Image.open(file_path))
-
-
-class QrToTxtWindow(QMainWindow):
-	def __init__(self):
-		super().__init__()
-		self.setWindowTitle("QR to TXT")
-		self.resize(820, 540)
-		self.setAcceptDrops(True)
-
-		self.output = QTextEdit()
-		self.output.setReadOnly(True)
-		self.output.setPlaceholderText("QR result will appear here...")
-
-		self._build_ui()
-		self._apply_theme()
-		self._setup_shortcuts()
-
-	def _build_ui(self):
-		header = QLabel("Convert QR to Text")
-		header.setObjectName("Header")
-		header.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
-
-		open_button = QPushButton("Select Image")
-		open_button.clicked.connect(self.open_images)
-
-		paste_button = QPushButton("Paste from Clipboard")
-		paste_button.clicked.connect(self.paste_from_clipboard)
-
-		save_button = QPushButton("Save as TXT")
-		save_button.clicked.connect(self.save_text)
-
-		clear_button = QPushButton("Clear")
-		clear_button.clicked.connect(self.clear_output)
-
-		button_row = QHBoxLayout()
-		button_row.addWidget(open_button)
-		button_row.addWidget(paste_button)
-		button_row.addWidget(save_button)
-		button_row.addWidget(clear_button)
-		button_row.addStretch()
-
-		footer = QLabel("Supported formats: PNG, JPG, JPEG, BMP  •  Drag & drop or Ctrl+V to paste")
-		footer.setObjectName("Footer")
-
-		content = QVBoxLayout()
-		content.addWidget(header)
-		content.addLayout(button_row)
-		content.addWidget(self.output)
-		content.addWidget(footer)
-
-		container = QWidget()
-		container.setLayout(content)
-		self.setCentralWidget(container)
-
-	def _setup_shortcuts(self):
-		QShortcut(QKeySequence("Ctrl+V"), self).activated.connect(self.paste_from_clipboard)
-		QShortcut(QKeySequence("Ctrl+O"), self).activated.connect(self.open_images)
-		QShortcut(QKeySequence("Ctrl+S"), self).activated.connect(self.save_text)
-
-	def _apply_theme(self):
-		self.setStyleSheet(
-			"""
-			QMainWindow {
-				background: #0f1115;
-			}
-			QLabel {
-				color: #d7dbe2;
-				font-size: 13px;
-			}
-			QLabel#Header {
-				font-size: 20px;
-				font-weight: 600;
-				margin: 10px 0 6px 0;
-			}
-			QLabel#Footer {
-				color: #8c93a0;
-				margin: 6px 0 0 0;
-			}
-			QPushButton {
-				background: #2b6be4;
-				color: white;
-				border: none;
-				padding: 8px 16px;
-				border-radius: 8px;
-			}
-			QPushButton:hover {
-				background: #3a7af0;
-			}
-			QPushButton:pressed {
-				background: #245bbf;
-			}
-			QTextEdit {
-				background: #151923;
-				color: #e6e9ef;
-				border: 1px solid #202636;
-				border-radius: 10px;
-				padding: 10px;
-				font-family: "Consolas";
-				font-size: 12px;
-			}
-			"""
-		)
-
-	def dragEnterEvent(self, event):
-		if event.mimeData().hasUrls():
-			urls = event.mimeData().urls()
-			if any(u.toLocalFile().lower().endswith((".png", ".jpg", ".jpeg", ".bmp")) for u in urls):
-				event.acceptProposedAction()
-				return
-		event.ignore()
-
-	def dropEvent(self, event):
-		paths = [
-			u.toLocalFile()
-			for u in event.mimeData().urls()
-			if u.toLocalFile().lower().endswith((".png", ".jpg", ".jpeg", ".bmp"))
-		]
-		if paths:
-			self._process_files(paths)
-
-	def open_images(self):
-		file_paths, _ = QFileDialog.getOpenFileNames(
-			self,
-			"Select QR image(s)",
-			"",
-			"Images (*.png *.jpg *.jpeg *.bmp);;All Files (*)",
-		)
-		if file_paths:
-			self._process_files(file_paths)
-
-	def paste_from_clipboard(self):
-		qimage = QApplication.clipboard().image()
-		if qimage.isNull():
-			QMessageBox.information(self, "Info", "No image in clipboard.")
-			return
-
-		try:
-			buf = QBuffer()
-			buf.open(QIODevice.OpenModeFlag.WriteOnly)
-			qimage.save(buf, "PNG")
-			pil_image = Image.open(BytesIO(bytes(buf.data())))
-			pil_image.load()
-			texts = _decode_pil_image(pil_image)
-		except Exception as exc:
-			QMessageBox.critical(self, "Error", str(exc))
-			return
-
-		self.output.clear()
-		if not texts:
-			self.output.setPlainText("No QR code found.")
-			return
-
-		self.output.setPlainText("\n".join(f"[{i}] {t}" for i, t in enumerate(texts, 1)))
-
-	def _process_files(self, paths):
-		lines = []
-		errors = []
-
-		for path in paths:
-			try:
-				texts = decode_qr_from_file(path)
-			except Exception as exc:
-				errors.append(f"{os.path.basename(path)}: {exc}")
-				continue
-
-			lines.append(f"=== {os.path.basename(path)} ===")
-
-			if not texts:
-				lines.append("No QR code found.")
-			else:
-				lines.extend(f"[{i}] {t}" for i, t in enumerate(texts, 1))
-
-			lines.append("")
-
-		if errors:
-			lines.append("--- Errors ---")
-			lines.extend(errors)
-
-		new_block = "\n".join(lines).strip()
-		if not new_block:
-			return
-
-		existing = self.output.toPlainText().strip()
-		self.output.setPlainText(existing + "\n\n" + new_block if existing else new_block)
-
-	def save_text(self):
-		content = self.output.toPlainText().strip()
-		if not content:
-			QMessageBox.information(self, "Info", "No content to save.")
-			return
-
-		file_path, _ = QFileDialog.getSaveFileName(
-			self,
-			"Save as TXT",
-			"qr-output.txt",
-			"Text Files (*.txt);;All Files (*)",
-		)
-		if not file_path:
-			return
-
-		try:
-			with open(file_path, "w", encoding="utf-8") as file_handle:
-				file_handle.write(content)
-		except Exception as exc:
-			QMessageBox.critical(self, "Error", str(exc))
-			return
-
-		QMessageBox.information(self, "Success", "File saved.")
-
-	def clear_output(self):
-		self.output.clear()
+class _UpdateBridge(QObject):
+	found = Signal(str)
 
 
 def main():
-	app = QApplication([])
-	window = QrToTxtWindow()
+	app = QApplication(sys.argv)
+	app.setQuitOnLastWindowClosed(False)
+
+	settings = AppSettings()
+
+	icon_path = os.path.normpath(
+		os.path.join(os.path.dirname(__file__), "..", "..", "icon", "qrtotxt.png")
+	)
+	icon = QIcon(icon_path) if os.path.isfile(icon_path) else QIcon()
+
+	window = QrToTxtWindow(settings)
+	if not icon.isNull():
+		window.setWindowIcon(icon)
+
+	tray = AppTray(icon, window)
+	window.set_tray(tray)
+
+	bridge = _UpdateBridge(app)
+	bridge.found.connect(
+		lambda v: window.statusBar().showMessage(
+			f"Update available: v{v}  —  visit github.com/NmnRn/QR-to-TXT to download", 0
+		)
+	)
+	if settings.check_updates:
+		check_for_update(bridge.found.emit)
+
 	window.show()
-	app.exec()
+	sys.exit(app.exec())
 
 
 if __name__ == "__main__":

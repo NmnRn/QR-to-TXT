@@ -1,3 +1,5 @@
 PySide6
 pillow
 pyzbar
+opencv-python-headless
+pymupdf

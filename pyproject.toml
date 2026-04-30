@@ -1,7 +1,7 @@
 [tool.briefcase]
 project_name = "QR to TXT"
 bundle = "com.nmnrn"
-version = "1.1.0"
+version = "1.3.0"
 url = "https://github.com/NmnRn/QR-to-TXT"
 license = "MIT"
 author = "NmnRn"
@@ -18,6 +18,8 @@ requires = [
     "PySide6",
     "pillow",
     "pyzbar",
+    "opencv-python-headless",
+    "pymupdf",
 ]
 
 [tool.briefcase.app.qrtotxt.linux]
@@ -26,6 +28,8 @@ requires = [
     "PySide6",
     "pillow",
     "pyzbar",
+    "opencv-python-headless",
+    "pymupdf",
 ]
 
 [tool.briefcase.app.qrtotxt.macOS]
@@ -33,6 +37,8 @@ requires = [
     "PySide6",
     "pillow",
     "pyzbar",
+    "opencv-python-headless",
+    "pymupdf",
 ]
 
 [tool.briefcase.app.qrtotxt.windows]
@@ -40,14 +46,16 @@ requires = [
     "PySide6",
     "pillow",
     "pyzbar",
+    "opencv-python-headless",
+    "pymupdf",
 ]
 
-# iOS: pyzbar requires libzbar (C library) which is not available on iOS.
-# zxingcpp is a pure C++ implementation with pre-built iOS wheels.
-# The app automatically falls back to zxingcpp when pyzbar is absent.
+# iOS: pyzbar/libzbar not available → zxingcpp fallback.
+# opencv-python-headless has no iOS wheel → camera disabled on iOS.
 [tool.briefcase.app.qrtotxt.iOS]
 requires = [
     "PySide6",
     "pillow",
     "zxingcpp",
+    "pymupdf",
 ]
