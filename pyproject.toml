@@ -1,0 +1,53 @@
+[tool.briefcase]
+project_name = "QR to TXT"
+bundle = "com.nmnrn"
+version = "1.1.0"
+url = "https://github.com/NmnRn/QR-to-TXT"
+license = "MIT"
+author = "NmnRn"
+author_email = "numanerenerdem7@hotmail.com"
+
+[tool.briefcase.app.qrtotxt]
+formal_name = "QR to TXT"
+description = "Decode QR codes from image files"
+long_description = "A desktop and mobile app that reads QR codes from image files and converts them to text."
+icon = "icon/qrtotxt"
+sources = ["src/qrtotxt"]
+main_module = "qrtotxt"
+requires = [
+    "PySide6",
+    "pillow",
+    "pyzbar",
+]
+
+[tool.briefcase.app.qrtotxt.linux]
+system_requires = ["libzbar0"]
+requires = [
+    "PySide6",
+    "pillow",
+    "pyzbar",
+]
+
+[tool.briefcase.app.qrtotxt.macOS]
+requires = [
+    "PySide6",
+    "pillow",
+    "pyzbar",
+]
+
+[tool.briefcase.app.qrtotxt.windows]
+requires = [
+    "PySide6",
+    "pillow",
+    "pyzbar",
+]
+
+# iOS: pyzbar requires libzbar (C library) which is not available on iOS.
+# zxingcpp is a pure C++ implementation with pre-built iOS wheels.
+# The app automatically falls back to zxingcpp when pyzbar is absent.
+[tool.briefcase.app.qrtotxt.iOS]
+requires = [
+    "PySide6",
+    "pillow",
+    "zxingcpp",
+]
