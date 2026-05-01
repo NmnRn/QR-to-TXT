@@ -158,6 +158,8 @@ class QrToTxtWindow(QMainWindow):
 		help_menu = mb.addMenu("Help")
 		help_menu.addAction("Session History", self.show_history)
 		help_menu.addAction("Check for Updates", self.manual_update_check)
+		help_menu.addSeparator()
+		help_menu.addAction("Version", self.show_version)
 
 	# ── UI layout ─────────────────────────────────────────────────────────────
 
@@ -522,6 +524,13 @@ class QrToTxtWindow(QMainWindow):
 				self, "Up to date",
 				f"You are running the latest version (v{CURRENT_VERSION}).",
 			)
+
+	def show_version(self):
+		from .updater import CURRENT_VERSION
+		QMessageBox.information(
+			self, "Version",
+			f"QR to TXT\nVersion: v{CURRENT_VERSION}",
+		)
 
 	# ── Tray / close ─────────────────────────────────────────────────────────
 
