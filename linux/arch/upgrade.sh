@@ -22,12 +22,12 @@ fi
 
 info "Checking for updates"
 cd "$TARGET_DIR"
-
-pull_output=$(git pull --ff-only 2>&1)
-if echo "$pull_output" | grep -q "Already up to date"; then
+git fetch --quiet
+if [[ "$(git rev-parse HEAD)" == "$(git rev-parse @{u})" ]]; then
 	success "Already up to date — nothing to do."
 	exit 0
 fi
+git merge --ff-only @{u}
 
 info "Updating virtual environment"
 [[ ! -d ".venv" ]] && python -m venv .venv

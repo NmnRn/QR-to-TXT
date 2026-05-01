@@ -16,11 +16,14 @@ if (-not (Test-Path $TargetDir)) {
 Set-Location $TargetDir
 
 Info "Checking for updates"
-$pullOutput = git pull --ff-only 2>&1
-if ($pullOutput -match "Already up to date") {
+git fetch --quiet
+$local  = git rev-parse HEAD
+$remote = git rev-parse "@{u}"
+if ($local -eq $remote) {
     OK "Already up to date — nothing to do."
     exit 0
 }
+git merge --ff-only "@{u}"
 OK "Repository updated"
 
 Info "Updating Python dependencies"
