@@ -46,14 +46,6 @@ class AppSettings:
 		self._s.setValue("theme", v)
 
 	@property
-	def minimize_to_tray(self):
-		return self._s.value("minimize_to_tray", False, type=bool)
-
-	@minimize_to_tray.setter
-	def minimize_to_tray(self, v):
-		self._s.setValue("minimize_to_tray", v)
-
-	@property
 	def check_updates(self):
 		return self._s.value("check_updates", True, type=bool)
 
@@ -101,11 +93,6 @@ class SettingsDialog(QDialog):
 		self._history_spin.setValue(self._settings.history_limit)
 		layout.addRow("History limit (entries):", self._history_spin)
 
-		# Minimize to tray
-		self._tray_check = QCheckBox()
-		self._tray_check.setChecked(self._settings.minimize_to_tray)
-		layout.addRow("Minimize to system tray:", self._tray_check)
-
 		# Check updates
 		self._update_check = QCheckBox()
 		self._update_check.setChecked(self._settings.check_updates)
@@ -131,7 +118,6 @@ class SettingsDialog(QDialog):
 		self._settings.theme = self._theme_combo.currentText()
 		self._settings.save_path = self._path_edit.text()
 		self._settings.history_limit = self._history_spin.value()
-		self._settings.minimize_to_tray = self._tray_check.isChecked()
 		self._settings.check_updates = self._update_check.isChecked()
 		self.accept()
 
