@@ -15,8 +15,12 @@ if (-not (Test-Path $TargetDir)) {
 
 Set-Location $TargetDir
 
-Info "Updating repository"
-git pull --ff-only
+Info "Checking for updates"
+$pullOutput = git pull --ff-only 2>&1
+if ($pullOutput -match "Already up to date") {
+    OK "Already up to date — nothing to do."
+    exit 0
+}
 OK "Repository updated"
 
 Info "Updating Python dependencies"

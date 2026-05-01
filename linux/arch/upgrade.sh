@@ -20,9 +20,14 @@ if [[ ! -d "$TARGET_DIR" ]]; then
 	exit 1
 fi
 
-info "Updating repository"
+info "Checking for updates"
 cd "$TARGET_DIR"
-git pull --ff-only
+
+pull_output=$(git pull --ff-only 2>&1)
+if echo "$pull_output" | grep -q "Already up to date"; then
+	success "Already up to date — nothing to do."
+	exit 0
+fi
 
 info "Updating virtual environment"
 [[ ! -d ".venv" ]] && python -m venv .venv
