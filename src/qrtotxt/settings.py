@@ -3,6 +3,7 @@ import os
 from PySide6.QtCore import QSettings
 from PySide6.QtWidgets import (
 	QCheckBox,
+	QComboBox,
 	QDialog,
 	QDialogButtonBox,
 	QFileDialog,
@@ -37,6 +38,14 @@ class AppSettings:
 		self._s.setValue("history_limit", v)
 
 	@property
+	def theme(self):
+		return self._s.value("theme", "Dark", type=str)
+
+	@theme.setter
+	def theme(self, v):
+		self._s.setValue("theme", v)
+
+	@property
 	def minimize_to_tray(self):
 		return self._s.value("minimize_to_tray", False, type=bool)
 
@@ -66,6 +75,14 @@ class SettingsDialog(QDialog):
 		layout = QFormLayout()
 		layout.setContentsMargins(24, 24, 24, 24)
 		layout.setSpacing(16)
+
+		# Theme
+		from .themes import THEME_NAMES
+		self._theme_combo = QComboBox()
+		self._theme_combo.addItems(THEME_NAMES)
+		current_idx = THEME_NAMES.index(self._settings.theme) if self._settings.theme in THEME_NAMES else 0
+		self._theme_combo.setCurrentIndex(current_idx)
+		layout.addRow("Theme:", self._theme_combo)
 
 		# Default save folder
 		row = QWidget()
@@ -111,6 +128,7 @@ class SettingsDialog(QDialog):
 			self._path_edit.setText(path)
 
 	def _save(self):
+		self._settings.theme = self._theme_combo.currentText()
 		self._settings.save_path = self._path_edit.text()
 		self._settings.history_limit = self._history_spin.value()
 		self._settings.minimize_to_tray = self._tray_check.isChecked()

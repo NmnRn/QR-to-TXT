@@ -29,14 +29,15 @@ from PIL import Image
 from .camera import CAMERA_AVAILABLE, CameraDialog
 from .decoder import _decode_pil_image, decode_qr_from_file
 from .settings import AppSettings, SettingsDialog
+from .themes import build_stylesheet
 
 _URL_RE = re.compile(r"https?://[^\s<>\"']+")
 
 
-def _linkify(plain: str) -> str:
+def _linkify(plain: str, link_color: str = "#6ab0f5") -> str:
 	escaped = html.escape(plain)
 	return _URL_RE.sub(
-		lambda m: f'<a href="{m.group()}" style="color:#6ab0f5;">{m.group()}</a>',
+		lambda m: f'<a href="{m.group()}" style="color:{link_color};">{m.group()}</a>',
 		escaped,
 	)
 
@@ -125,7 +126,7 @@ class QrToTxtWindow(QMainWindow):
 
 		self._build_ui()
 		self._build_menu()
-		self._apply_theme()
+		self._apply_current_theme()
 		self._setup_shortcuts()
 
 	# ── Menu ──────────────────────────────────────────────────────────────────
@@ -213,29 +214,9 @@ class QrToTxtWindow(QMainWindow):
 		QShortcut(QKeySequence("Ctrl+S"), self).activated.connect(self.save_txt)
 		QShortcut(QKeySequence("Ctrl+Shift+C"), self).activated.connect(self.copy_to_clipboard)
 
-	def _apply_theme(self):
-		self.setStyleSheet("""
-			QMainWindow, QWidget { background: #0f1115; }
-			QMenuBar { background: #0f1115; color: #d7dbe2; font-size: 13px; padding: 2px; }
-			QMenuBar::item:selected { background: #202636; border-radius: 4px; }
-			QMenu { background: #151923; color: #d7dbe2; border: 1px solid #202636; }
-			QMenu::item:selected { background: #2b6be4; }
-			QLabel { color: #d7dbe2; font-size: 13px; }
-			QLabel#Footer { color: #8c93a0; font-size: 12px; margin-top: 2px; }
-			QPushButton {
-				background: #2b6be4; color: white; border: none;
-				padding: 7px 13px; border-radius: 8px; font-size: 13px;
-			}
-			QPushButton:hover { background: #3a7af0; }
-			QPushButton:pressed { background: #245bbf; }
-			QPushButton:disabled { background: #1e2433; color: #555e72; }
-			QTextBrowser {
-				background: #151923; color: #e6e9ef;
-				border: 1px solid #202636; border-radius: 10px;
-				padding: 10px; font-family: Consolas,monospace; font-size: 12px;
-			}
-			QStatusBar { background: #0f1115; color: #8c93a0; font-size: 12px; }
-		""")
+	def _apply_current_theme(self):
+		self.setStyleSheet(build_stylesheet(self._settings.theme))
+		self._render()
 
 	# ── Drag & drop ───────────────────────────────────────────────────────────
 
@@ -367,6 +348,8 @@ class QrToTxtWindow(QMainWindow):
 	# ── Rendering ─────────────────────────────────────────────────────────────
 
 	def _render(self):
+		from .themes import THEMES
+		t = THEMES.get(self._settings.theme, THEMES["Dark"])
 		if not self._results:
 			self._output.clear()
 			return
@@ -375,24 +358,24 @@ class QrToTxtWindow(QMainWindow):
 			src = html.escape(entry["source"])
 			ts  = html.escape(entry["timestamp"])
 			parts.append(
-				f'<p style="color:#8c93a0;margin:10px 0 2px 0;">'
+				f'<p style="color:{t["result_src"]};margin:10px 0 2px 0;">'
 				f'<b>=== {src} ===</b>'
-				f'<span style="font-weight:normal;font-size:11px;color:#555e72;"> {ts}</span></p>'
+				f'<span style="font-weight:normal;font-size:11px;color:{t["result_empty"]};"> {ts}</span></p>'
 			)
 			if not entry["texts"]:
 				parts.append(
-					'<p style="color:#555e72;margin:1px 0 4px 0;">'
-					'&nbsp;&nbsp;No QR code found.</p>'
+					f'<p style="color:{t["result_empty"]};margin:1px 0 4px 0;">'
+					f'&nbsp;&nbsp;No QR code found.</p>'
 				)
 			else:
 				for i, text in enumerate(entry["texts"], 1):
 					parts.append(
-						f'<p style="color:#e6e9ef;margin:1px 0;">'
-						f'&nbsp;&nbsp;[{i}] {_linkify(text)}</p>'
+						f'<p style="color:{t["result_text"]};margin:1px 0;">'
+						f'&nbsp;&nbsp;[{i}] {_linkify(text, t["link"])}</p>'
 					)
 		self._output.setHtml(
-			'<html><body style="background:#151923;color:#e6e9ef;'
-			'font-family:Consolas,monospace;font-size:12px;margin:10px;">'
+			f'<html><body style="background:{t["widget_bg"]};color:{t["result_text"]};'
+			f'font-family:Consolas,monospace;font-size:12px;margin:10px;">'
 			+ "".join(parts)
 			+ "</body></html>"
 		)
@@ -490,7 +473,9 @@ class QrToTxtWindow(QMainWindow):
 	# ── Settings & history ────────────────────────────────────────────────────
 
 	def open_settings(self):
-		SettingsDialog(self._settings, self).exec()
+		dlg = SettingsDialog(self._settings, self)
+		if dlg.exec():
+			self._apply_current_theme()
 
 	def show_history(self):
 		if not self._history:
