@@ -6,24 +6,15 @@ COLOR_GREEN="\033[1;32m"
 COLOR_YELLOW="\033[1;33m"
 COLOR_RESET="\033[0m"
 
-info() {
-	printf "%b\n" "${COLOR_BLUE}==>${COLOR_RESET} $*"
-}
-
-success() {
-	printf "%b\n" "${COLOR_GREEN}OK:${COLOR_RESET} $*"
-}
-
-warn() {
-	printf "%b\n" "${COLOR_YELLOW}WARN:${COLOR_RESET} $*"
-}
+info()    { printf "%b\n" "${COLOR_BLUE}==>${COLOR_RESET} $*"; }
+success() { printf "%b\n" "${COLOR_GREEN}OK:${COLOR_RESET} $*"; }
+warn()    { printf "%b\n" "${COLOR_YELLOW}WARN:${COLOR_RESET} $*"; }
 
 REPO_URL="https://github.com/NmnRn/QR-to-TXT.git"
-TARGET_DIR="/home/$USER/QR-to-TXT"
+TARGET_DIR="$HOME/QR-to-TXT"
 
 info "Installing dependencies"
-sudo apt update -qq
-sudo apt install -y -qq git python3 python3-venv python3-pip libzbar0
+sudo dnf install -y git python3 python3-pip zbar
 
 info "Python version"
 python3 --version
@@ -45,18 +36,18 @@ info "Installing Python dependencies"
 pip install --upgrade pip
 pip install -r requirements.txt
 
-APP_DIR="$TARGET_DIR"
-APP_PY="$APP_DIR/.venv/bin/python"
-APP_ICON="$APP_DIR/icon/qrtotxt.png"
+APP_PY="$TARGET_DIR/.venv/bin/python"
+APP_ICON="$TARGET_DIR/icon/qrtotxt.png"
 DESKTOP_FILE="$HOME/.local/share/applications/qr-to-txt.desktop"
 
 info "Creating desktop shortcut"
+mkdir -p "$(dirname "$DESKTOP_FILE")"
 cat > "$DESKTOP_FILE" <<EOF
 [Desktop Entry]
 Type=Application
 Name=QR to TXT
 Comment=Decode QR codes to text
-Exec=$APP_PY $APP_DIR/QRtoTXT.py
+Exec=$APP_PY $TARGET_DIR/QRtoTXT.py
 Icon=$APP_ICON
 Terminal=false
 Categories=Utility;Graphics;

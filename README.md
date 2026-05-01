@@ -4,44 +4,88 @@
 ![License](https://img.shields.io/badge/License-MIT-green.svg)
 ![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20macOS%20%7C%20Windows%20%7C%20iOS-lightgrey)
 
-A simple desktop app that reads QR codes from image files and converts them to text.
+A desktop app that reads QR codes from images, PDFs, webcam, or clipboard and converts them to text.
 Uses a PySide6 UI with `pyzbar` and `Pillow` for decoding.
 
 ## Features
 
-- Decode QR from image files (PNG/JPG/JPEG/BMP)
+- Decode QR from image files (PNG/JPG/JPEG/BMP), PDFs, webcam, or clipboard
 - Select multiple files at once — results append, nothing is overwritten
-- Drag & drop images directly onto the window
-- Paste an image from clipboard (Ctrl+V)
-- Save output as TXT
-- Keyboard shortcuts: Ctrl+O (open), Ctrl+V (paste), Ctrl+S (save)
+- Open entire folder — all images processed at once
+- Drag & drop images/PDFs directly onto the window
+- Clickable links in output
+- Save as TXT, CSV, or JSON
+- Copy all results to clipboard
+- Session history, system tray, settings, auto-update check
+- Keyboard shortcuts: Ctrl+O (open), Ctrl+V (paste), Ctrl+S (save), Ctrl+Shift+C (copy)
 
 ---
 
 ## Linux
 
-### One-command install
+Scripts are organized by distribution under the `linux/` folder.
+
+### Debian / Ubuntu
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/NmnRn/QR-to-TXT/main/download.sh | bash
+curl -fsSL https://raw.githubusercontent.com/NmnRn/QR-to-TXT/main/linux/debian/download.sh | bash
 ```
 
-### Upgrade
-
 ```bash
-curl -fsSL https://raw.githubusercontent.com/NmnRn/QR-to-TXT/main/upgrade.sh | bash
+# Upgrade
+curl -fsSL https://raw.githubusercontent.com/NmnRn/QR-to-TXT/main/linux/debian/upgrade.sh | bash
+
+# Uninstall
+curl -fsSL https://raw.githubusercontent.com/NmnRn/QR-to-TXT/main/linux/debian/uninstall.sh | bash
 ```
 
-### Uninstall
+### Fedora / RHEL / CentOS
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/NmnRn/QR-to-TXT/main/uninstall.sh | bash
+curl -fsSL https://raw.githubusercontent.com/NmnRn/QR-to-TXT/main/linux/fedora/download.sh | bash
 ```
 
-### Manual install
+```bash
+# Upgrade
+curl -fsSL https://raw.githubusercontent.com/NmnRn/QR-to-TXT/main/linux/fedora/upgrade.sh | bash
+
+# Uninstall
+curl -fsSL https://raw.githubusercontent.com/NmnRn/QR-to-TXT/main/linux/fedora/uninstall.sh | bash
+```
+
+### Arch Linux
 
 ```bash
-sudo apt install libzbar0
+curl -fsSL https://raw.githubusercontent.com/NmnRn/QR-to-TXT/main/linux/arch/download.sh | bash
+```
+
+```bash
+# Upgrade
+curl -fsSL https://raw.githubusercontent.com/NmnRn/QR-to-TXT/main/linux/arch/upgrade.sh | bash
+
+# Uninstall
+curl -fsSL https://raw.githubusercontent.com/NmnRn/QR-to-TXT/main/linux/arch/uninstall.sh | bash
+```
+
+### openSUSE
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/NmnRn/QR-to-TXT/main/linux/opensuse/download.sh | bash
+```
+
+```bash
+# Upgrade
+curl -fsSL https://raw.githubusercontent.com/NmnRn/QR-to-TXT/main/linux/opensuse/upgrade.sh | bash
+
+# Uninstall
+curl -fsSL https://raw.githubusercontent.com/NmnRn/QR-to-TXT/main/linux/opensuse/uninstall.sh | bash
+```
+
+### Manual install (any distro)
+
+Install `libzbar` with your package manager, then:
+
+```bash
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 python QRtoTXT.py
@@ -51,24 +95,14 @@ python QRtoTXT.py
 
 ## macOS
 
-### One-command install
-
 ```bash
+# Install
 curl -fsSL https://raw.githubusercontent.com/NmnRn/QR-to-TXT/main/download_macos.sh | bash
-```
 
-Installs Homebrew (if needed), `zbar`, Python, clones the repo, and creates a
-double-clickable shortcut on your Desktop.
-
-### Upgrade
-
-```bash
+# Upgrade
 curl -fsSL https://raw.githubusercontent.com/NmnRn/QR-to-TXT/main/upgrade_macos.sh | bash
-```
 
-### Uninstall
-
-```bash
+# Uninstall
 curl -fsSL https://raw.githubusercontent.com/NmnRn/QR-to-TXT/main/uninstall_macos.sh | bash
 ```
 
@@ -76,26 +110,16 @@ curl -fsSL https://raw.githubusercontent.com/NmnRn/QR-to-TXT/main/uninstall_maco
 
 ## Windows
 
-### One-command install
-
 Open **PowerShell** and run:
 
 ```powershell
+# Install
 powershell -ExecutionPolicy Bypass -c "iwr -useb https://raw.githubusercontent.com/NmnRn/QR-to-TXT/main/download.ps1 | iex"
-```
 
-Installs Python and Git via `winget` (if needed), clones the repo, and creates a
-shortcut on your Desktop.
-
-### Upgrade
-
-```powershell
+# Upgrade
 powershell -ExecutionPolicy Bypass -c "iwr -useb https://raw.githubusercontent.com/NmnRn/QR-to-TXT/main/upgrade.ps1 | iex"
-```
 
-### Uninstall
-
-```powershell
+# Uninstall
 powershell -ExecutionPolicy Bypass -c "iwr -useb https://raw.githubusercontent.com/NmnRn/QR-to-TXT/main/uninstall.ps1 | iex"
 ```
 
@@ -108,10 +132,8 @@ Requires macOS + Xcode:
 ```bash
 pip install briefcase
 briefcase build iOS
-briefcase build macOS   # native .app bundle
+briefcase build macOS
 ```
-
-On iOS, `pyzbar` is replaced automatically by `zxingcpp` (no code changes needed).
 
 ---
 
