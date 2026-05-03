@@ -1,12 +1,12 @@
 from PIL import Image
 from PySide6.QtCore import Qt, QTimer, Signal
 from PySide6.QtGui import QImage, QPixmap
-from PySide6.QtWidgets import QDialog, QLabel, QPushButton, QVBoxLayout
+from PySide6.QtWidgets import QDialog, QHBoxLayout, QLabel, QPushButton, QVBoxLayout
 
 try:
-	import cv2
-	CAMERA_AVAILABLE = True
-except ImportError:
+	import importlib.util
+	CAMERA_AVAILABLE = importlib.util.find_spec("cv2") is not None
+except Exception:
 	CAMERA_AVAILABLE = False
 
 
@@ -16,10 +16,11 @@ class CameraDialog(QDialog):
 	def __init__(self, parent=None):
 		super().__init__(parent)
 		self.setWindowTitle("Scan from Camera")
-		self.resize(680, 560)
+		self.resize(680, 580)
 		self._cap = None
 		self._timer = None
 		self._last_texts = None
+		self._mirror = True
 		self._build_ui()
 		self._apply_theme()
 		self._start()
@@ -33,16 +34,30 @@ class CameraDialog(QDialog):
 		self._status.setObjectName("Status")
 		self._status.setAlignment(Qt.AlignCenter)
 
+		self._mirror_btn = QPushButton("Mirror: ON")
+		self._mirror_btn.setCheckable(True)
+		self._mirror_btn.setChecked(True)
+		self._mirror_btn.clicked.connect(self._toggle_mirror)
+
 		close_btn = QPushButton("Close")
 		close_btn.clicked.connect(self.reject)
+
+		btn_row = QHBoxLayout()
+		btn_row.addWidget(self._mirror_btn)
+		btn_row.addStretch()
+		btn_row.addWidget(close_btn)
 
 		layout = QVBoxLayout()
 		layout.setContentsMargins(10, 10, 10, 10)
 		layout.setSpacing(8)
 		layout.addWidget(self._preview)
 		layout.addWidget(self._status)
-		layout.addWidget(close_btn)
+		layout.addLayout(btn_row)
 		self.setLayout(layout)
+
+	def _toggle_mirror(self, checked):
+		self._mirror = checked
+		self._mirror_btn.setText("Mirror: ON" if checked else "Mirror: OFF")
 
 	def _apply_theme(self):
 		self.setStyleSheet("""
@@ -54,13 +69,16 @@ class CameraDialog(QDialog):
 				padding: 8px 16px; border-radius: 8px;
 			}
 			QPushButton:hover { background: #3a7af0; }
+			QPushButton:checked { background: #245bbf; }
 		""")
 
 	def _start(self):
 		if not CAMERA_AVAILABLE:
 			self._status.setText("opencv-python-headless is not installed.")
 			return
-		self._cap = cv2.VideoCapture(0)
+		import cv2 as _cv2
+		self._cv2 = _cv2
+		self._cap = self._cv2.VideoCapture(0)
 		if not self._cap.isOpened():
 			self._status.setText("No camera found.")
 			return
@@ -73,11 +91,10 @@ class CameraDialog(QDialog):
 		if not ret:
 			return
 
-		rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-		pil = Image.fromarray(rgb)
+		rgb = self._cv2.cvtColor(frame, self._cv2.COLOR_BGR2RGB)
 
 		from .decoder import _decode_pil_image
-		texts = _decode_pil_image(pil)
+		texts = _decode_pil_image(Image.fromarray(rgb))
 
 		if texts and texts != self._last_texts:
 			self._last_texts = texts
@@ -86,8 +103,9 @@ class CameraDialog(QDialog):
 			self.accept()
 			return
 
-		h, w, ch = rgb.shape
-		qimg = QImage(rgb.data, w, h, ch * w, QImage.Format.Format_RGB888)
+		display = self._cv2.flip(rgb, 1) if self._mirror else rgb
+		h, w, ch = display.shape
+		qimg = QImage(display.data, w, h, ch * w, QImage.Format.Format_RGB888)
 		self._preview.setPixmap(
 			QPixmap.fromImage(qimg).scaled(
 				self._preview.width(), self._preview.height(),
