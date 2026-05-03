@@ -22,35 +22,39 @@ class AppSettings:
 		self._s = QSettings("NmnRn", "QRtoTXT")
 
 	@property
-	def save_path(self):
-		return self._s.value("save_path", os.path.expanduser("~"), type=str)
+	def save_path(self) -> str:
+		return str(self._s.value("save_path", os.path.expanduser("~")))
 
 	@save_path.setter
-	def save_path(self, v):
+	def save_path(self, v: str) -> None:
 		self._s.setValue("save_path", v)
 
 	@property
-	def history_limit(self):
-		return self._s.value("history_limit", 50, type=int)
+	def history_limit(self) -> int:
+		v = self._s.value("history_limit", 50)
+		return int(v) if v is not None else 50  # type: ignore[arg-type]
 
 	@history_limit.setter
-	def history_limit(self, v):
+	def history_limit(self, v: int) -> None:
 		self._s.setValue("history_limit", v)
 
 	@property
-	def theme(self):
-		return self._s.value("theme", "Dark", type=str)
+	def theme(self) -> str:
+		return str(self._s.value("theme", "Dark"))
 
 	@theme.setter
-	def theme(self, v):
+	def theme(self, v: str) -> None:
 		self._s.setValue("theme", v)
 
 	@property
-	def check_updates(self):
-		return self._s.value("check_updates", True, type=bool)
+	def check_updates(self) -> bool:
+		v = self._s.value("check_updates", True)
+		if isinstance(v, bool):
+			return v
+		return str(v).lower() not in ("false", "0", "no")
 
 	@check_updates.setter
-	def check_updates(self, v):
+	def check_updates(self, v: bool) -> None:
 		self._s.setValue("check_updates", v)
 
 

@@ -89,6 +89,8 @@ class CameraDialog(QDialog):
 		self._timer.start(33)  # ~30 fps
 
 	def _read_frame(self):
+		if self._cap is None:
+			return
 		ret, frame = self._cap.read()
 		if not ret:
 			return

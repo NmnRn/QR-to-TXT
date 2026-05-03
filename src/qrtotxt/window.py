@@ -295,8 +295,8 @@ class QrToTxtWindow(QMainWindow):
 		try:
 			buf = QBuffer()
 			buf.open(QIODevice.OpenModeFlag.WriteOnly)
-			qimage.save(buf, "PNG")
-			pil = Image.open(BytesIO(bytes(buf.data())))
+			qimage.save(buf, "PNG")  # type: ignore[arg-type]
+			pil = Image.open(BytesIO(bytes(buf.data())))  # type: ignore[arg-type]
 			pil.load()
 			texts = _decode_pil_image(pil)
 		except Exception as exc:
