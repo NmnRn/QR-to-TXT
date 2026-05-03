@@ -29,12 +29,12 @@ class CameraDialog(QDialog):
 
 	def _build_ui(self):
 		self._preview = QLabel("Starting camera…")
-		self._preview.setAlignment(Qt.AlignCenter)
+		self._preview.setAlignment(Qt.AlignmentFlag.AlignCenter)
 		self._preview.setMinimumSize(640, 480)
 
 		self._status = QLabel("Point camera at a QR code")
 		self._status.setObjectName("Status")
-		self._status.setAlignment(Qt.AlignCenter)
+		self._status.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
 		self._mirror_btn = QPushButton("Mirror: ON")
 		self._mirror_btn.setCheckable(True)
@@ -124,7 +124,7 @@ class CameraDialog(QDialog):
 		self._preview.setPixmap(
 			QPixmap.fromImage(qimg).scaled(
 				self._preview.width(), self._preview.height(),
-				Qt.KeepAspectRatio, Qt.SmoothTransformation,
+				Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation,
 			)
 		)
 
