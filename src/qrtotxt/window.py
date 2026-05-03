@@ -3,6 +3,8 @@ import html
 import json
 import os
 import re
+import subprocess
+import sys
 from datetime import datetime
 from io import BytesIO
 
@@ -158,6 +160,8 @@ class QrToTxtWindow(QMainWindow):
 
 		help_menu = mb.addMenu("Help")
 		help_menu.addAction("Session History", self.show_history)
+		help_menu.addSeparator()
+		help_menu.addAction("Upgrade", self.upgrade_app)
 		help_menu.addAction("Check for Updates", self.manual_update_check)
 		help_menu.addSeparator()
 		help_menu.addAction("Version", self.show_version)
@@ -483,7 +487,73 @@ class QrToTxtWindow(QMainWindow):
 			return
 		HistoryDialog(self._history, self).exec()
 
-	# ── Update ────────────────────────────────────────────────────────────────
+	# ── Upgrade & update ──────────────────────────────────────────────────────
+
+	def upgrade_app(self):
+		root = os.path.normpath(
+			os.path.join(os.path.dirname(__file__), "..", "..")
+		)
+
+		self.statusBar().showMessage("Checking for updates…")
+		QApplication.processEvents()
+
+		try:
+			subprocess.run(
+				["git", "fetch", "--quiet"], cwd=root, check=True, timeout=15
+			)
+			local  = subprocess.check_output(
+				["git", "rev-parse", "HEAD"], cwd=root, text=True
+			).strip()
+			remote = subprocess.check_output(
+				["git", "rev-parse", "@{u}"], cwd=root, text=True
+			).strip()
+		except Exception as exc:
+			self.statusBar().clearMessage()
+			QMessageBox.critical(self, "Upgrade", f"Could not reach remote:\n{exc}")
+			return
+
+		self.statusBar().clearMessage()
+
+		if local == remote:
+			from .updater import CURRENT_VERSION
+			QMessageBox.information(
+				self, "Up to date",
+				f"Already on the latest version (v{CURRENT_VERSION})."
+			)
+			return
+
+		reply = QMessageBox.question(
+			self, "Upgrade available",
+			"A new version is available. Upgrade now?\n\nThe app will restart after upgrading.",
+			QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+		)
+		if reply != QMessageBox.StandardButton.Yes:
+			return
+
+		self.statusBar().showMessage("Upgrading… please wait.")
+		QApplication.processEvents()
+
+		try:
+			subprocess.run(
+				["git", "merge", "--ff-only", "@{u}"], cwd=root, check=True, timeout=30
+			)
+			subprocess.run(
+				[sys.executable, "-m", "pip", "install", "-r",
+				 os.path.join(root, "requirements.txt"), "-q"],
+				check=True, timeout=180,
+			)
+		except Exception as exc:
+			self.statusBar().clearMessage()
+			QMessageBox.critical(self, "Upgrade failed", str(exc))
+			return
+
+		self.statusBar().clearMessage()
+		QMessageBox.information(
+			self, "Upgrade complete",
+			"Upgrade successful! The app will now restart."
+		)
+		subprocess.Popen([sys.executable] + sys.argv)
+		QApplication.quit()
 
 	def manual_update_check(self):
 		from .updater import CURRENT_VERSION, check_for_update
