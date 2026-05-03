@@ -20,6 +20,8 @@ class CameraDialog(QDialog):
 		self._cap = None
 		self._timer = None
 		self._last_texts = None
+		self._confirm_texts = None
+		self._confirm_count = 0
 		self._mirror = True
 		self._build_ui()
 		self._apply_theme()
@@ -96,12 +98,25 @@ class CameraDialog(QDialog):
 		from .decoder import _decode_pil_image
 		texts = _decode_pil_image(Image.fromarray(rgb))
 
-		if texts and texts != self._last_texts:
-			self._last_texts = texts
-			self.qr_detected.emit(texts)
-			self._stop()
-			self.accept()
-			return
+		if texts:
+			if texts == self._confirm_texts:
+				self._confirm_count += 1
+			else:
+				self._confirm_texts = texts
+				self._confirm_count = 1
+
+			self._status.setText(f"Locking… ({self._confirm_count}/3)")
+
+			if self._confirm_count >= 3:
+				self._last_texts = texts
+				self.qr_detected.emit(texts)
+				self._stop()
+				self.accept()
+				return
+		else:
+			self._confirm_texts = None
+			self._confirm_count = 0
+			self._status.setText("Point camera at a QR code")
 
 		display = self._cv2.flip(rgb, 1) if self._mirror else rgb
 		h, w, ch = display.shape
