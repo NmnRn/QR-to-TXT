@@ -1,5 +1,6 @@
 import os
 import re
+from datetime import datetime
 from io import BytesIO
 from typing import cast
 
@@ -22,6 +23,8 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from ..db import AppDB
+from ..i18n import tr
 from ..settings import AppSettings
 
 _URL_RE = re.compile(r"^https?://", re.IGNORECASE)
@@ -40,13 +43,20 @@ _BADGE: dict[str, str] = {
     "none": "padding:2px 10px;",
 }
 
+# Auto-save directory for generated QR codes
+_QR_DIR = os.path.join(os.path.expanduser("~"), "QR Codes")
 
-def _make_qr_image(text: str) -> Image.Image:
+
+def _make_qr_image(
+    text: str,
+    fill_color: str = "black",
+    back_color: str = "white",
+) -> Image.Image:
     try:
         import qrcode
         import qrcode.constants
     except ImportError:
-        raise ImportError("QR generation requires qrcode:\n\npip install \"qrcode[pil]\"")
+        raise ImportError(tr("err_missing_qrcode"))
     qr = qrcode.QRCode(
         version=None,
         error_correction=qrcode.constants.ERROR_CORRECT_M,
@@ -55,7 +65,7 @@ def _make_qr_image(text: str) -> Image.Image:
     )
     qr.add_data(text)
     qr.make(fit=True)
-    pil_img = cast(Image.Image, qr.make_image(fill_color="black", back_color="white"))
+    pil_img = cast(Image.Image, qr.make_image(fill_color=fill_color, back_color=back_color))
     return pil_img.convert("RGB")
 
 
@@ -67,18 +77,30 @@ def _pil_to_pixmap(img: Image.Image) -> QPixmap:
     return px
 
 
+def _auto_save(img: Image.Image) -> str:
+    """Save QR to ~/QR Codes/ with a timestamp filename. Returns the path."""
+    os.makedirs(_QR_DIR, exist_ok=True)
+    filename = datetime.now().strftime("qr_%Y%m%d_%H%M%S.png")
+    path = os.path.join(_QR_DIR, filename)
+    img.save(path)
+    return path
+
+
 class GeneratorDialog(QDialog):
-    def __init__(self, settings: AppSettings, parent: QWidget | None = None):
+    def __init__(self, settings: AppSettings, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self._settings = settings
-        self._pil_image: Image.Image | None = None
-        self.setWindowTitle("Generate QR Code")
+        self._pil_image: Image.Image | None = None      # white bg — for save/copy
+        self._display_image: Image.Image | None = None  # themed bg — for preview
+        self._saved_path: str = ""
+        self._content_type: str = "none"
+        self.setWindowTitle(tr("dlg_generator_title"))
         self.setMinimumSize(400, 540)
         self.resize(440, 580)
         self._build_ui()
         self._apply_theme()
 
-    # ── Layout ───────────────────────────────────────────────────────────────
+    # ── Layout ────────────────────────────────────────────────────────────────
 
     def _build_ui(self) -> None:
         outer = QVBoxLayout()
@@ -95,19 +117,19 @@ class GeneratorDialog(QDialog):
         card = QFrame()
         card.setObjectName("Card")
 
-        hint = QLabel("Enter text or URL to encode")
+        hint = QLabel(tr("gen_hint"))
         hint.setObjectName("Hint")
 
         self._input = QTextEdit()
-        self._input.setPlaceholderText("Paste a link or type any text…")
+        self._input.setPlaceholderText(tr("gen_placeholder"))
         self._input.setFixedHeight(80)
         self._input.textChanged.connect(self._on_text_changed)
 
-        self._badge = QLabel("—")
+        self._badge = QLabel(tr("gen_type_none"))
         self._badge.setObjectName("Badge")
         self._badge.setStyleSheet(_BADGE["none"])
 
-        self._gen_btn = QPushButton("Generate  →")
+        self._gen_btn = QPushButton(tr("gen_generate"))
         self._gen_btn.setObjectName("Primary")
         self._gen_btn.clicked.connect(self._generate)
 
@@ -130,25 +152,30 @@ class GeneratorDialog(QDialog):
         card = QFrame()
         card.setObjectName("QrCard")
 
-        self._qr_label = QLabel("QR code will appear here")
+        self._qr_label = QLabel(tr("gen_qr_placeholder"))
         self._qr_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._qr_label.setObjectName("QrLabel")
         self._qr_label.setSizePolicy(
             QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
         )
 
+        self._auto_save_label = QLabel("")
+        self._auto_save_label.setObjectName("AutoSave")
+        self._auto_save_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
         inner = QVBoxLayout()
-        inner.setContentsMargins(16, 16, 16, 16)
+        inner.setContentsMargins(16, 16, 16, 8)
         inner.addWidget(self._qr_label)
+        inner.addWidget(self._auto_save_label)
         card.setLayout(inner)
         return card
 
     def _make_button_row(self) -> QHBoxLayout:
-        self._save_btn = QPushButton("Save PNG")
+        self._save_btn = QPushButton(tr("gen_save_png"))
         self._save_btn.setObjectName("Primary")
-        self._copy_btn = QPushButton("Copy Image")
+        self._copy_btn = QPushButton(tr("gen_copy_image"))
         self._copy_btn.setObjectName("Primary")
-        close_btn = QPushButton("Close")
+        close_btn = QPushButton(tr("btn_close"))
         close_btn.setObjectName("Ghost")
 
         self._save_btn.clicked.connect(self._save)
@@ -168,29 +195,47 @@ class GeneratorDialog(QDialog):
     def _on_text_changed(self) -> None:
         text = self._input.toPlainText().strip()
         if not text:
-            self._badge.setText("—")
+            self._badge.setText(tr("gen_type_none"))
             self._badge.setStyleSheet(_BADGE["none"])
+            self._content_type = "none"
         elif _URL_RE.match(text):
-            self._badge.setText("Link")
+            self._badge.setText(tr("gen_type_link"))
             self._badge.setStyleSheet(_BADGE["link"])
+            self._content_type = "link"
         else:
-            self._badge.setText("Text")
+            self._badge.setText(tr("gen_type_text"))
             self._badge.setStyleSheet(_BADGE["text"])
+            self._content_type = "text"
 
     def _generate(self) -> None:
         text = self._input.toPlainText().strip()
         if not text:
-            QMessageBox.information(self, "Info", "Please enter some text or a URL.")
+            QMessageBox.information(self, tr("title_info"), tr("msg_enter_text"))
             return
+        from ..themes import THEMES
+        t = THEMES.get(self._settings.theme, THEMES["Dark"])
+
         try:
-            img = _make_qr_image(text)
+            self._pil_image    = _make_qr_image(text)                           # white — for save/copy
+            self._display_image = _make_qr_image(text, t["text"], t["widget_bg"])  # themed — for preview
         except ImportError as exc:
-            QMessageBox.critical(self, "Missing package", str(exc))
+            QMessageBox.critical(self, tr("title_missing_pkg"), str(exc))
             return
         except Exception as exc:
-            QMessageBox.critical(self, "Error", str(exc))
+            QMessageBox.critical(self, tr("title_error"), str(exc))
             return
-        self._pil_image = img
+
+        # Auto-save and record in DB
+        try:
+            path = _auto_save(img)
+            self._saved_path = path
+            AppDB.instance().add_generated(text, self._content_type, path)
+            self._auto_save_label.setText(
+                f"{tr('gen_auto_saved')}  —  {os.path.basename(path)}"
+            )
+        except Exception:
+            self._auto_save_label.setText("")
+
         self._refresh_pixmap()
 
     def resizeEvent(self, event: QResizeEvent) -> None:
@@ -199,9 +244,10 @@ class GeneratorDialog(QDialog):
             self._refresh_pixmap()
 
     def _refresh_pixmap(self) -> None:
-        if self._pil_image is None:
+        img = self._display_image or self._pil_image
+        if img is None:
             return
-        pixmap = _pil_to_pixmap(self._pil_image)
+        pixmap = _pil_to_pixmap(img)
         size = self._qr_label.size()
         self._qr_label.setPixmap(
             pixmap.scaled(
@@ -213,29 +259,38 @@ class GeneratorDialog(QDialog):
 
     def _save(self) -> None:
         if self._pil_image is None:
-            QMessageBox.information(self, "Info", "Generate a QR code first.")
+            QMessageBox.information(self, tr("title_info"), tr("msg_generate_first"))
             return
+        default = self._saved_path or os.path.join(
+            self._settings.save_path, "qrcode.png"
+        )
         path, _ = QFileDialog.getSaveFileName(
-            self, "Save QR Code",
-            os.path.join(self._settings.save_path, "qrcode.png"),
+            self, tr("dlg_save_qr"), default,
             "PNG Images (*.png);;All Files (*)",
         )
         if not path:
             return
         try:
             self._pil_image.save(path)
-            QMessageBox.information(self, "Saved", "QR code saved.")
+            # Update DB record if path changed
+            if path != self._saved_path:
+                AppDB.instance().add_generated(
+                    self._input.toPlainText().strip(),
+                    self._content_type,
+                    path,
+                )
+            QMessageBox.information(self, tr("title_saved"), tr("msg_qr_saved"))
         except Exception as exc:
-            QMessageBox.critical(self, "Error", str(exc))
+            QMessageBox.critical(self, tr("title_error"), str(exc))
 
     def _copy(self) -> None:
         if self._pil_image is None:
-            QMessageBox.information(self, "Info", "Generate a QR code first.")
+            QMessageBox.information(self, tr("title_info"), tr("msg_generate_first"))
             return
         QApplication.clipboard().setPixmap(_pil_to_pixmap(self._pil_image))
         p = self.parent()
         if isinstance(p, QMainWindow):
-            p.statusBar().showMessage("QR code copied to clipboard.")
+            p.statusBar().showMessage(tr("status_qr_copied"))
 
     # ── Theme ─────────────────────────────────────────────────────────────────
 
@@ -259,6 +314,10 @@ class GeneratorDialog(QDialog):
                 font-size: 12px;
                 font-weight: normal;
             }}
+            QLabel#AutoSave {{
+                color: {t['text_dim']};
+                font-size: 11px;
+            }}
             QTextEdit {{
                 background: {t['window_bg']};
                 color: {t['text']};
@@ -274,7 +333,7 @@ class GeneratorDialog(QDialog):
 
             /* ── QR card ── */
             QFrame#QrCard {{
-                background: #ffffff;
+                background: {t['widget_bg']};
                 border: 1px solid {t['border']};
                 border-radius: 12px;
             }}

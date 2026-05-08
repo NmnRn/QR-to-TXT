@@ -5,6 +5,8 @@ from PySide6.QtCore import QObject, Signal
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication
 
+from .db import AppDB
+from .i18n import set_language
 from .settings import AppSettings
 from .tray import AppTray
 from .updater import check_for_update
@@ -12,39 +14,43 @@ from .window import QrToTxtWindow
 
 
 class _UpdateBridge(QObject):
-	found = Signal(str)
+    found = Signal(str)
 
 
-def main():
-	app = QApplication(sys.argv)
-	app.setQuitOnLastWindowClosed(False)
+def main() -> None:
+    # ── Bootstrap DB and i18n before any UI ──────────────────────────────────
+    db = AppDB.instance()
+    set_language(db.get("language", "en"))
 
-	settings = AppSettings()
+    app = QApplication(sys.argv)
+    app.setQuitOnLastWindowClosed(False)
 
-	icon_path = os.path.normpath(
-		os.path.join(os.path.dirname(__file__), "..", "..", "icon", "qrtotxt.png")
-	)
-	icon = QIcon(icon_path) if os.path.isfile(icon_path) else QIcon()
+    settings = AppSettings()
 
-	window = QrToTxtWindow(settings)
-	if not icon.isNull():
-		window.setWindowIcon(icon)
+    icon_path = os.path.normpath(
+        os.path.join(os.path.dirname(__file__), "..", "..", "icon", "qrtotxt.png")
+    )
+    icon = QIcon(icon_path) if os.path.isfile(icon_path) else QIcon()
 
-	tray = AppTray(icon, window)
-	window.set_tray(tray)
+    window = QrToTxtWindow(settings)
+    if not icon.isNull():
+        window.setWindowIcon(icon)
 
-	bridge = _UpdateBridge(app)
-	bridge.found.connect(
-		lambda v: window.statusBar().showMessage(
-			f"Update available: v{v}  —  visit github.com/NmnRn/QR-to-TXT to download", 0
-		)
-	)
-	if settings.check_updates:
-		check_for_update(bridge.found.emit)
+    tray = AppTray(icon, window)
+    window.set_tray(tray)
 
-	window.show()
-	sys.exit(app.exec())
+    bridge = _UpdateBridge(app)
+    bridge.found.connect(
+        lambda v: window.statusBar().showMessage(
+            f"Update available: v{v}  —  visit github.com/NmnRn/QR-to-TXT to download", 0
+        )
+    )
+    if settings.check_updates:
+        check_for_update(bridge.found.emit)
+
+    window.show()
+    sys.exit(app.exec())
 
 
 if __name__ == "__main__":
-	main()
+    main()

@@ -111,4 +111,22 @@ def build_stylesheet(name: str) -> str:
 		QCheckBox::indicator {{ width: 16px; height: 16px; }}
 		QDialog {{ background: {t['window_bg']}; }}
 		QDialogButtonBox QPushButton {{ padding: 7px 22px; }}
+		QFrame#Separator {{
+			color: {t['border']}; background: {t['border']};
+			max-width: 1px; margin: 4px 4px;
+		}}
+		QPushButton#GenBtn {{
+			background: {t['button_bg']}; color: white; border: none;
+			padding: 7px 16px; border-radius: 8px; font-size: 13px; font-weight: bold;
+		}}
+		QPushButton#GenBtn:hover  {{ background: {t['button_hover']}; }}
+		QPushButton#GenBtn:pressed {{ background: {t['button_press']}; }}
+		QPushButton#ClearBtn {{
+			background: transparent; color: {t['text_dim']};
+			border: 1px solid {t['border']};
+			padding: 7px 13px; border-radius: 8px; font-size: 13px;
+		}}
+		QPushButton#ClearBtn:hover {{
+			background: {t['border']}; color: {t['text']};
+		}}
 	"""
