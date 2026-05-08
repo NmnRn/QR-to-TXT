@@ -30,6 +30,7 @@ from PIL import Image
 
 from .camera import CAMERA_AVAILABLE, CameraDialog
 from .decoder import _decode_pil_image, decode_qr_from_file
+from .generator import GeneratorDialog
 from .settings import AppSettings, SettingsDialog
 from .themes import build_stylesheet
 
@@ -152,6 +153,9 @@ class QrToTxtWindow(QMainWindow):
 		file_menu.addSeparator()
 		file_menu.addAction("Exit", self.close)
 
+		tools_menu = mb.addMenu("Tools")
+		tools_menu.addAction("Generate QR Code", self.open_generator)
+
 		edit_menu = mb.addMenu("Edit")
 		edit_menu.addAction("Copy All   Ctrl+Shift+C", self.copy_to_clipboard)
 		edit_menu.addAction("Clear", self.clear_output)
@@ -174,6 +178,7 @@ class QrToTxtWindow(QMainWindow):
 		pdf_btn    = QPushButton("Open PDF")
 		cam_btn    = QPushButton("Scan Camera")
 		paste_btn  = QPushButton("Paste")
+		gen_btn    = QPushButton("Generate QR")
 		copy_btn   = QPushButton("Copy All")
 		save_btn   = QPushButton("Save TXT")
 		clear_btn  = QPushButton("Clear")
@@ -187,12 +192,13 @@ class QrToTxtWindow(QMainWindow):
 		pdf_btn.clicked.connect(self.open_pdf)
 		cam_btn.clicked.connect(self.scan_camera)
 		paste_btn.clicked.connect(self.paste_from_clipboard)
+		gen_btn.clicked.connect(self.open_generator)
 		copy_btn.clicked.connect(self.copy_to_clipboard)
 		save_btn.clicked.connect(self.save_txt)
 		clear_btn.clicked.connect(self.clear_output)
 
 		btn_row = QHBoxLayout()
-		for btn in (open_btn, folder_btn, pdf_btn, cam_btn, paste_btn):
+		for btn in (open_btn, folder_btn, pdf_btn, cam_btn, paste_btn, gen_btn):
 			btn_row.addWidget(btn)
 		btn_row.addStretch()
 		for btn in (copy_btn, save_btn, clear_btn):
@@ -487,6 +493,9 @@ class QrToTxtWindow(QMainWindow):
 			return
 		HistoryDialog(self._history, self).exec()
 
+	def open_generator(self):
+		GeneratorDialog(self._settings, self).exec()
+
 	# ── Upgrade & update ──────────────────────────────────────────────────────
 
 	def upgrade_app(self):
@@ -514,8 +523,8 @@ class QrToTxtWindow(QMainWindow):
 
 		self.statusBar().clearMessage()
 
+		from .updater import CURRENT_VERSION
 		if local == remote:
-			from .updater import CURRENT_VERSION
 			QMessageBox.information(
 				self, "Up to date",
 				f"Already on the latest version (v{CURRENT_VERSION})."
@@ -524,7 +533,8 @@ class QrToTxtWindow(QMainWindow):
 
 		reply = QMessageBox.question(
 			self, "Upgrade available",
-			"A new version is available. Upgrade now?\n\nThe app will restart after upgrading.",
+			f"A newer version is available (you are on v{CURRENT_VERSION}).\n"
+			"Upgrade now?\n\nThe app will restart after upgrading.",
 			QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
 		)
 		if reply != QMessageBox.StandardButton.Yes:
@@ -556,22 +566,36 @@ class QrToTxtWindow(QMainWindow):
 		QApplication.quit()
 
 	def manual_update_check(self):
-		from .updater import CURRENT_VERSION, check_for_update
+		from .updater import CURRENT_VERSION
+		import threading
 
-		self._update_result = None
+		version: str | None = None
+		error: str | None = None
+		done = False
 
-		def found(v):
-			self._update_result = v
+		def _run():
+			nonlocal version, error, done
+			try:
+				version = _sync_latest()
+			except Exception as exc:
+				error = str(exc)
+			done = True
 
-		# Run synchronously for manual check (give it a moment)
-		import threading, time
-		t = threading.Thread(target=lambda: found(_sync_latest()))
+		t = threading.Thread(target=_run, daemon=True)
 		t.start()
-		t.join(timeout=7)
-		if self._update_result:
+		t.join(timeout=8)
+
+		if not done:
+			QMessageBox.warning(self, "Update check", "Update check timed out. Please try again.")
+		elif error is not None:
+			QMessageBox.warning(
+				self, "Update check failed",
+				f"Could not reach update server:\n{error}",
+			)
+		elif version:
 			QMessageBox.information(
 				self, "Update available",
-				f"New version v{self._update_result} is available.\n"
+				f"New version v{version} is available.\n"
 				"Visit github.com/NmnRn/QR-to-TXT to download.",
 			)
 		else:
@@ -598,15 +622,12 @@ class QrToTxtWindow(QMainWindow):
 
 
 def _sync_latest() -> str | None:
-	"""Blocking version of update check used for manual checks."""
+	"""Returns newer version tag if available, None if already up to date. Raises on error."""
 	import json, urllib.request
-	try:
-		url = "https://api.github.com/repos/NmnRn/QR-to-TXT/releases/latest"
-		req = urllib.request.Request(url, headers={"User-Agent": "QRtoTXT-updater"})
-		with urllib.request.urlopen(req, timeout=6) as resp:
-			data = json.loads(resp.read())
-		from .updater import CURRENT_VERSION, _is_newer
-		tag = data.get("tag_name", "").lstrip("v")
-		return tag if tag and _is_newer(tag, CURRENT_VERSION) else None
-	except Exception:
-		return None
+	url = "https://api.github.com/repos/NmnRn/QR-to-TXT/releases/latest"
+	req = urllib.request.Request(url, headers={"User-Agent": "QRtoTXT-updater"})
+	with urllib.request.urlopen(req, timeout=6) as resp:
+		data = json.loads(resp.read())
+	from .updater import CURRENT_VERSION, _is_newer
+	tag = data.get("tag_name", "").lstrip("v")
+	return tag if tag and _is_newer(tag, CURRENT_VERSION) else None
