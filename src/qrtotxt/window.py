@@ -39,6 +39,13 @@ from .themes import build_stylesheet
 
 _URL_RE = re.compile(r"https?://[^\s<>\"']+")
 
+
+class _FileDlg(QFileDialog):
+    """QFileDialog with a blank stylesheet so system colours are used."""
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self.setStyleSheet("")
+
 # QR Codes auto-save directory
 _QR_DIR = os.path.join(os.path.expanduser("~"), "QR Codes")
 
@@ -310,17 +317,17 @@ class QrToTxtWindow(QMainWindow):
 	# ── Open actions ──────────────────────────────────────────────────────────
 
 	def open_images(self) -> None:
-		paths, _ = QFileDialog.getOpenFileNames(
-			self, tr("dlg_open_images"), self._settings.save_path,
-			"Images (*.png *.jpg *.jpeg *.bmp);;All Files (*)",
-		)
-		if paths:
-			self._process_files(paths)
+		d = _FileDlg(self, tr("dlg_open_images"), self._settings.save_path,
+		             "Images (*.png *.jpg *.jpeg *.bmp);;All Files (*)")
+		d.setFileMode(QFileDialog.FileMode.ExistingFiles)
+		if d.exec():
+			self._process_files(d.selectedFiles())
 
 	def open_folder(self) -> None:
-		folder = QFileDialog.getExistingDirectory(
-			self, tr("dlg_open_folder"), self._settings.save_path
-		)
+		d = _FileDlg(self, tr("dlg_open_folder"), self._settings.save_path)
+		d.setFileMode(QFileDialog.FileMode.Directory)
+		d.setOption(QFileDialog.Option.ShowDirsOnly, True)
+		folder = d.selectedFiles()[0] if d.exec() else ""
 		if not folder:
 			return
 		exts = {".png", ".jpg", ".jpeg", ".bmp"}
@@ -335,12 +342,11 @@ class QrToTxtWindow(QMainWindow):
 		self._process_files(paths)
 
 	def open_pdf(self) -> None:
-		path, _ = QFileDialog.getOpenFileName(
-			self, tr("dlg_open_pdf"), self._settings.save_path,
-			"PDF Files (*.pdf);;All Files (*)",
-		)
-		if path:
-			self._process_pdf(path)
+		d = _FileDlg(self, tr("dlg_open_pdf"), self._settings.save_path,
+		             "PDF Files (*.pdf);;All Files (*)")
+		d.setFileMode(QFileDialog.FileMode.ExistingFile)
+		if d.exec():
+			self._process_pdf(d.selectedFiles()[0])
 
 	def scan_camera(self) -> None:
 		dlg = CameraDialog(self)
@@ -472,11 +478,11 @@ class QrToTxtWindow(QMainWindow):
 		if not text:
 			QMessageBox.information(self, tr("title_info"), tr("msg_no_content_save"))
 			return
-		path, _ = QFileDialog.getSaveFileName(
-			self, tr("dlg_save_txt"),
-			os.path.join(self._settings.save_path, "qr-output.txt"),
-			"Text Files (*.txt);;All Files (*)",
-		)
+		d = _FileDlg(self, tr("dlg_save_txt"),
+		             os.path.join(self._settings.save_path, "qr-output.txt"),
+		             "Text Files (*.txt);;All Files (*)")
+		d.setAcceptMode(QFileDialog.AcceptMode.AcceptSave)
+		path = d.selectedFiles()[0] if d.exec() else ""
 		if not path:
 			return
 		try:
@@ -490,11 +496,11 @@ class QrToTxtWindow(QMainWindow):
 		if not self._results:
 			QMessageBox.information(self, tr("title_info"), tr("msg_no_content_save"))
 			return
-		path, _ = QFileDialog.getSaveFileName(
-			self, tr("dlg_save_csv"),
-			os.path.join(self._settings.save_path, "qr-output.csv"),
-			"CSV Files (*.csv);;All Files (*)",
-		)
+		d = _FileDlg(self, tr("dlg_save_csv"),
+		             os.path.join(self._settings.save_path, "qr-output.csv"),
+		             "CSV Files (*.csv);;All Files (*)")
+		d.setAcceptMode(QFileDialog.AcceptMode.AcceptSave)
+		path = d.selectedFiles()[0] if d.exec() else ""
 		if not path:
 			return
 		try:
@@ -515,11 +521,11 @@ class QrToTxtWindow(QMainWindow):
 		if not self._results:
 			QMessageBox.information(self, tr("title_info"), tr("msg_no_content_save"))
 			return
-		path, _ = QFileDialog.getSaveFileName(
-			self, tr("dlg_save_json"),
-			os.path.join(self._settings.save_path, "qr-output.json"),
-			"JSON Files (*.json);;All Files (*)",
-		)
+		d = _FileDlg(self, tr("dlg_save_json"),
+		             os.path.join(self._settings.save_path, "qr-output.json"),
+		             "JSON Files (*.json);;All Files (*)")
+		d.setAcceptMode(QFileDialog.AcceptMode.AcceptSave)
+		path = d.selectedFiles()[0] if d.exec() else ""
 		if not path:
 			return
 		try:

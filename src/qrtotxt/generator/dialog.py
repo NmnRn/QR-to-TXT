@@ -264,10 +264,10 @@ class GeneratorDialog(QDialog):
         default = self._saved_path or os.path.join(
             self._settings.save_path, "qrcode.png"
         )
-        path, _ = QFileDialog.getSaveFileName(
-            self, tr("dlg_save_qr"), default,
-            "PNG Images (*.png);;All Files (*)",
-        )
+        d = QFileDialog(self, tr("dlg_save_qr"), default, "PNG Images (*.png);;All Files (*)")
+        d.setStyleSheet("")
+        d.setAcceptMode(QFileDialog.AcceptMode.AcceptSave)
+        path = d.selectedFiles()[0] if d.exec() else ""
         if not path:
             return
         try:

@@ -127,11 +127,12 @@ class SettingsDialog(QDialog):
 		self.setLayout(layout)
 
 	def _browse(self) -> None:
-		path = QFileDialog.getExistingDirectory(
-			self, "Select default save folder", self._settings.save_path
-		)
-		if path:
-			self._path_edit.setText(path)
+		d = QFileDialog(self, "Select default save folder", self._settings.save_path)
+		d.setStyleSheet("")
+		d.setFileMode(QFileDialog.FileMode.Directory)
+		d.setOption(QFileDialog.Option.ShowDirsOnly, True)
+		if d.exec():
+			self._path_edit.setText(d.selectedFiles()[0])
 
 	def _save(self) -> None:
 		from .db import AppDB
